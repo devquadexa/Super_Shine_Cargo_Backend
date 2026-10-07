@@ -1,0 +1,190 @@
+/**
+ * Location Routes
+ * Handles Sri Lankan districts and cities
+ */
+const express = require('express');
+const router = express.Router();
+const { auth } = require('../../middleware/auth');
+
+const isMySQL = (process.env.DB_TYPE || 'mysql').toLowerCase() === 'mysql';
+
+let cachedDistricts = null;
+let cachedCitiesByDistrict = {};
+let cachedAllCities = null;
+
+// Get all districts
+router.get('/districts', auth, async (req, res) => {
+  try {
+    if (cachedDistricts) {
+      return res.json(cachedDistricts);
+    }
+
+    if (isMySQL) {
+      const mysqlDb = require('../../config/mysqlDatabase');
+      const rows = await mysqlDb.query(`
+        SELECT districtId, districtName, province 
+        FROM districts 
+        WHERE isActive = 1 
+        ORDER BY districtName
+      `);
+      cachedDistricts = rows;
+      return res.json(rows);
+    }
+
+    const sql = require('mssql');
+    const dbConfig = require('../../config/database');
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .query(`
+        SELECT districtId, districtName, province 
+        FROM Districts 
+        WHERE isActive = 1 
+        ORDER BY districtName
+      `);
+    cachedDistricts = result.recordset;
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching districts:', error);
+    res.status(500).json({ message: 'Error fetching districts' });
+  }
+});
+
+// Get cities by district
+router.get('/cities/:districtId', auth, async (req, res) => {
+  try {
+    const { districtId } = req.params;
+
+    if (cachedCitiesByDistrict[districtId]) {
+      return res.json(cachedCitiesByDistrict[districtId]);
+    }
+
+    if (isMySQL) {
+      const mysqlDb = require('../../config/mysqlDatabase');
+      const rows = await mysqlDb.query(`
+        SELECT cityId, cityName 
+        FROM cities 
+        WHERE districtId = ? AND isActive = 1 
+        ORDER BY cityName
+      `, [districtId]);
+      cachedCitiesByDistrict[districtId] = rows;
+      return res.json(rows);
+    }
+
+    const sql = require('mssql');
+    const dbConfig = require('../../config/database');
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .input('districtId', sql.Int, districtId)
+      .query(`
+        SELECT cityId, cityName 
+        FROM Cities 
+        WHERE districtId = @districtId AND isActive = 1 
+        ORDER BY cityName
+      `);
+    cachedCitiesByDistrict[districtId] = result.recordset;
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching cities:', error);
+    res.status(500).json({ message: 'Error fetching cities' });
+  }
+});
+
+// Get all cities (for search/autocomplete)
+router.get('/cities', auth, async (req, res) => {
+  try {
+    if (cachedAllCities) {
+      return res.json(cachedAllCities);
+    }
+
+    if (isMySQL) {
+      const mysqlDb = require('../../config/mysqlDatabase');
+      const rows = await mysqlDb.query(`
+        SELECT c.cityId, c.cityName, c.districtId, d.districtName, d.province
+        FROM cities c
+        JOIN districts d ON c.districtId = d.districtId
+        WHERE c.isActive = 1 AND d.isActive = 1
+        ORDER BY c.cityName
+      `);
+      cachedAllCities = rows;
+      return res.json(rows);
+    }
+
+    const sql = require('mssql');
+    const dbConfig = require('../../config/database');
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .query(`
+        SELECT c.cityId, c.cityName, c.districtId, d.districtName, d.province
+        FROM Cities c
+        JOIN Districts d ON c.districtId = d.districtId
+        WHERE c.isActive = 1 AND d.isActive = 1
+        ORDER BY c.cityName
+      `);
+    cachedAllCities = result.recordset;
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching all cities:', error);
+    res.status(500).json({ message: 'Error fetching cities' });
+  }
+});
+
+// Get district and city info by IDs
+router.get('/address-info', auth, async (req, res) => {
+  try {
+    const { cityId, districtId } = req.query;
+
+    if (isMySQL) {
+      const mysqlDb = require('../../config/mysqlDatabase');
+      let query = `
+        SELECT 
+          d.districtId, d.districtName, d.province,
+          c.cityId, c.cityName
+        FROM districts d
+        LEFT JOIN cities c ON d.districtId = c.districtId
+        WHERE d.isActive = 1
+      `;
+      const params = [];
+      if (cityId) {
+        query += ` AND c.cityId = ?`;
+        params.push(cityId);
+      }
+      if (districtId) {
+        query += ` AND d.districtId = ?`;
+        params.push(districtId);
+      }
+      const rows = await mysqlDb.query(query, params);
+      return res.json(rows[0] || null);
+    }
+
+    const sql = require('mssql');
+    const dbConfig = require('../../config/database');
+    const pool = await sql.connect(dbConfig);
+    
+    let query = `
+      SELECT 
+        d.districtId, d.districtName, d.province,
+        c.cityId, c.cityName
+      FROM Districts d
+      LEFT JOIN Cities c ON d.districtId = c.districtId
+      WHERE d.isActive = 1
+    `;
+    
+    const request = pool.request();
+    if (cityId) {
+      query += ` AND c.cityId = @cityId`;
+      request.input('cityId', sql.Int, cityId);
+    }
+    if (districtId) {
+      query += ` AND d.districtId = @districtId`;
+      request.input('districtId', sql.Int, districtId);
+    }
+    
+    const result = await request.query(query);
+    res.json(result.recordset[0] || null);
+  } catch (error) {
+    console.error('Error fetching address info:', error);
+    res.status(500).json({ message: 'Error fetching address info' });
+  }
+});
+
+module.exports = router;
