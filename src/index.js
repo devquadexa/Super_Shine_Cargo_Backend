@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Import Clean Architecture routes
@@ -97,25 +98,53 @@ app.use('/api/test-notification', testNotificationRoutes(container));
 app.use('/api/settings/clerk-managers', clerkManagerRoutes(container));
 app.use('/api/clerk-managers', clerkManagerRoutes(container));
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
-
 // API health check
 app.get('/api', (req, res) => {
   res.json({ 
     message: 'Super Shine Cargo Service API',
     architecture: 'Clean Architecture',
-    version: '2.0.0'
+    version: '2.0.0',
+    status: 'online'
   });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
+// Root route handler
+app.get('/', (req, res) => {
+  const frontendBuild = path.join(__dirname, '../../frontend/build/index.html');
+  if (fs.existsSync(frontendBuild)) {
+    return res.sendFile(frontendBuild);
+  }
+  res.json({
+    message: 'Super Shine Cargo Service API',
+    status: 'online',
+    version: '2.0.0',
+    endpoints: '/api'
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📐 Architecture: Clean Architecture + SOLID`);
-  console.log(`🔗 API: http://localhost:${PORT}`);
+// Serve static files from the React app if available (monolith setup)
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+if (fs.existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+}
+
+// 404 handler for unmatched API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl });
 });
+
+// Export app for Vercel serverless functions
+module.exports = app;
+
+// Only start listening when not running in serverless environment (e.g. Vercel)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📐 Architecture: Clean Architecture + SOLID`);
+    console.log(`🔗 API: http://localhost:${PORT}`);
+  });
+}

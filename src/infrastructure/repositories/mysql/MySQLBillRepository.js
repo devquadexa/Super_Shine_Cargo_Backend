@@ -63,13 +63,12 @@ class MySQLBillRepository extends BaseMySQLRepository {
 
   async findAll(filters = {}) {
     const now = Date.now();
-    if (!filters.paymentStatus && !filters.jobId && this._cache && (now - this._cacheTime < 60000)) {
+    if (!filters.paymentStatus && this._cache && (now - this._cacheTime < 60000)) {
       return this._cache;
     }
 
     const where = {};
     if (filters.paymentStatus) where.paymentStatus = filters.paymentStatus;
-    if (filters.jobId) where.jobId = filters.jobId;
 
     const rows = await this.prisma.bills.findMany({
       where,
@@ -77,7 +76,7 @@ class MySQLBillRepository extends BaseMySQLRepository {
     });
     const result = rows.map(r => this.mapToEntity(r));
 
-    if (!filters.paymentStatus && !filters.jobId) {
+    if (!filters.paymentStatus) {
       this._cache = result;
       this._cacheTime = now;
     }

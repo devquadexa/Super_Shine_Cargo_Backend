@@ -29,7 +29,12 @@ class PettyCashAssignment {
     paymentMethod,
     referenceNumber,
     approvedByName,
+    approvedByRole,
+    rejectedByName,
+    rejectedByRole,
     issuedByName,
+    issuedByRole,
+    assignedByRole,
     assignedManagerId,
     assignedManagerName,
     effectiveManagerId
@@ -56,7 +61,12 @@ class PettyCashAssignment {
     this.paymentMethod = paymentMethod || null;
     this.referenceNumber = referenceNumber || null;
     this.approvedByName = approvedByName || null;
+    this.approvedByRole = approvedByRole || null;
+    this.rejectedByName = rejectedByName || null;
+    this.rejectedByRole = rejectedByRole || null;
     this.issuedByName = issuedByName || null;
+    this.issuedByRole = issuedByRole || null;
+    this.assignedByRole = assignedByRole || null;
     this.assignedManagerId = assignedManagerId || null;
     this.assignedManagerName = assignedManagerName || null;
     this.effectiveManagerId = effectiveManagerId || null;
@@ -96,7 +106,12 @@ class PettyCashAssignment {
       paymentMethod: this.paymentMethod,
       referenceNumber: this.referenceNumber,
       approvedByName: this.approvedByName,
+      approvedByRole: this.approvedByRole,
+      rejectedByName: this.rejectedByName,
+      rejectedByRole: this.rejectedByRole,
       issuedByName: this.issuedByName,
+      issuedByRole: this.issuedByRole,
+      assignedByRole: this.assignedByRole,
       settlementItems: this.settlementItems,
       readOnlyPredefinedItems: this.readOnlyPredefinedItems,
       shipmentCategory: this.shipmentCategory,

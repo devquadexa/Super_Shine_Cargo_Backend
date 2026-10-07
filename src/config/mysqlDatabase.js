@@ -11,7 +11,7 @@ if (missingEnvVars.length > 0) {
 }
 
 const isRemoteHost = process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1';
-const useSSL = process.env.DB_SSL === 'true' || isRemoteHost;
+const useSSL = process.env.DB_SSL === 'false' ? false : (process.env.DB_SSL === 'true' || isRemoteHost);
 
 const config = {
   host: process.env.DB_HOST || process.env.DB_SERVER || 'localhost',
@@ -20,7 +20,7 @@ const config = {
   password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
   database: process.env.DB_NAME || process.env.DB_DATABASE || 'super_shine_cargo',
   waitForConnections: true,
-  connectionLimit: 25,
+  connectionLimit: process.env.VERCEL ? 5 : (parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 25),
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,

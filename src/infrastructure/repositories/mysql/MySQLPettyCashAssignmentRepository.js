@@ -90,10 +90,15 @@ class MySQLPettyCashAssignmentRepository extends BaseMySQLRepository {
       SELECT 
         pca.*,
         u_to.fullName AS assignedToName,
+        u_to.role AS assignedToRole,
         u_by.fullName AS assignedByName,
+        u_by.role AS assignedByRole,
         u_app.fullName AS approvedByName,
+        u_app.role AS approvedByRole,
         u_rej.fullName AS rejectedByName,
+        u_rej.role AS rejectedByRole,
         u_iss.fullName AS issuedByName,
+        u_iss.role AS issuedByRole,
         COALESCE(pca.assignedManagerId, cma.managerId) AS effectiveManagerId,
         u_mgr.fullName AS assignedManagerName
       FROM pettycashassignments pca
@@ -1205,8 +1210,12 @@ class MySQLPettyCashAssignmentRepository extends BaseMySQLRepository {
       paymentMethod: row.paymentMethod || null,
       referenceNumber: row.referenceNumber || null,
       approvedByName: row.approvedByName || null,
+      approvedByRole: row.approvedByRole || null,
       rejectedByName: row.rejectedByName || null,
+      rejectedByRole: row.rejectedByRole || null,
       issuedByName: row.issuedByName || null,
+      issuedByRole: row.issuedByRole || null,
+      assignedByRole: row.assignedByRole || null,
       assignedManagerId: row.assignedManagerId || null,
       assignedManagerName: row.assignedManagerName || null,
       effectiveManagerId: row.effectiveManagerId || row.assignedManagerId || null,
